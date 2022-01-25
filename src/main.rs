@@ -1,11 +1,6 @@
 use rand::Rng;
-// use std::cmp::Ordering;
 use std::io;
-
-// struct House {
-//     id: u8,
-//     hand: Vec<Card>,
-// }
+use std::process;
 
 struct Dealer {
     score: u8,
@@ -13,6 +8,7 @@ struct Dealer {
     won: bool,
     hand: Vec<Card>,
 }
+
 #[derive(Debug)]
 struct Player {
     id: u8,
@@ -30,6 +26,32 @@ struct Card {
     held_by: u8,
 }
 
+struct Deck {
+    cards: Vec<Card>,
+}
+
+impl Deck {
+    fn deal_card(&mut self) -> Card {
+        // loop until a card is returned
+        loop {
+            // generate a rand number for the card, simulating a shuffled deck
+            let rand_num: u16 = rand::thread_rng().gen_range(0..52);
+
+            // the card is still in the deck
+            if self.cards[rand_num as usize].played == false {
+                // clone the card
+                let mut card = self.cards[rand_num as usize].clone();
+                // set the card as played to true
+                card.played = true;
+                // set the card to played
+                self.cards[rand_num as usize].played = true;
+                // return the card to break the loop
+                return card;
+            }
+        }
+    }
+}
+
 // implementing display for Card struct so Card struct can be printed to the terminal
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -43,25 +65,42 @@ impl std::fmt::Display for Card {
 
 // implementing function on Player struct to print the players current hand
 impl Player {
-    fn show_hand(&self) {
-        for card in &self.hand {
-            println!("{}", card.name);
+    fn add_card(&mut self, card: Card, first: bool) {
+        self.hand.push(card);
+
+        self.score = self.calc_score();
+
+        if !first {
+            println!("\n=== Player {} ===\n", self.id);
+
+            self.show_hand();
+            self.show_score();
+            self.check_busted();
         }
     }
 
-    fn calc_score(&mut self) {
+    fn show_hand(&self) {
+        for card in &self.hand {
+            println!("Player {} is showing a {}", self.id, card.name);
+        }
+    }
+
+    fn calc_score(&mut self) -> u8 {
+        let mut score = 0;
+
         for card in &self.hand {
             if card.value != 11 {
-                self.score += card.value;
+                score += card.value;
             } else {
-                let temp_score = self.score + 11;
+                let temp_score = score + 11;
                 if temp_score > 21 {
-                    self.score += 1;
+                    score += 1;
                 } else {
-                    self.score += 11;
+                    score += 11;
                 }
             }
         }
+        return score;
     }
 
     fn check_busted(&mut self) {
@@ -78,25 +117,61 @@ impl Player {
 }
 
 impl Dealer {
-    fn show_hand(&self) {
-        for card in &self.hand {
-            println!("{}", card.name);
+    fn add_card(&mut self, card: Card, first: bool) {
+        self.hand.push(card);
+
+        if !first {
+            self.show_hand();
+            self.score = self.calc_score();
+            self.check_busted();
+
+            println!("\n=== Dealer Debug ===\n");
+            self.debug_show_score();
+            self.debug_print_hand();
         }
     }
 
-    fn calc_score(&mut self) {
+    fn debug_print_hand(&self) {
+        for card in &self.hand {
+            println!("{}", card);
+        }
+    }
+
+    fn show_hand(&self) {
+        // shows the last card in the dealers hand
+
+        let card = self.get_last_card();
+        let shown_card = card.unwrap();
+
+        println!(
+            "The dealer is showing a {}, and another card faced down.",
+            shown_card.name
+        );
+    }
+
+    fn get_last_card(&self) -> Option<&Card> {
+        match self.hand.len() {
+            0 => None,
+            n => Some(&self.hand[n - 1]),
+        }
+    }
+
+    fn calc_score(&mut self) -> u8 {
+        let mut score = 0;
+
         for card in &self.hand {
             if card.value != 11 {
-                self.score += card.value;
+                score += card.value;
             } else {
-                let temp_score = self.score + 11;
+                let temp_score = score + 11;
                 if temp_score > 21 {
-                    self.score += 1;
+                    score += 1;
                 } else {
-                    self.score += 11;
+                    score += 11;
                 }
             }
         }
+        return score;
     }
 
     fn check_busted(&mut self) {
@@ -106,7 +181,7 @@ impl Dealer {
         }
     }
 
-    fn show_score(&self) {
+    fn debug_show_score(&self) {
         println!("Dealer score: {}", self.score);
     }
 }
@@ -114,17 +189,31 @@ impl Dealer {
 // main function
 fn main() {
     //
-    // const BUSTED: u8 = 22;
-
-    let cards = generate_cards();
-
-    let dealer = generate_dealer();
-
-    // let house = House { id: 0, hand: cards };
 
     println!("Welcome to Command Line Blackjack! Implemented in Rust.");
     println!("=======================================================");
 
+    // let num_of_players = generate_player_count();
+
+    // debug output
+    // println!("There will be {} players\n", num_of_players);
+
+    // creating the players, deck, and dealer objects
+
+    // let players = generate_players(num_of_players);
+
+    let player = generate_player();
+
+    let deck = Deck {
+        cards: generate_cards(),
+    };
+
+    let dealer = generate_dealer();
+
+    play_game(player, dealer, deck);
+}
+
+fn generate_player_count() -> u16 {
     // declaring player numbers variable as a new string data type
     let mut players_num = String::new();
 
@@ -142,21 +231,8 @@ fn main() {
             Err(_) => continue,
         };
 
-        break players_num;
+        return players_num;
     };
-
-    // debug output
-    println!("There will be {} players\n", num_of_players);
-
-    let players = generate_players(num_of_players);
-
-    println!("{:?}", players);
-
-    println!("=======================================================");
-    println!("Let the game begin\n");
-    println!("The dealer is shuffling the cards...\n");
-
-    deal(dealer, players, cards);
 }
 
 fn generate_dealer() -> Dealer {
@@ -229,21 +305,34 @@ fn generate_card_names(card_types: [&str; 4], card_values: [&str; 13]) -> Vec<St
     return card_names;
 }
 
-fn generate_players(number_of_players: u16) -> Vec<Player> {
-    let mut players: Vec<Player> = Vec::new();
+// fn generate_players(number_of_players: u16) -> Vec<Player> {
+//     let mut players: Vec<Player> = Vec::new();
 
-    for x in 1..(number_of_players + 1) {
-        let empty_hand: Vec<Card> = Vec::new();
+//     for x in 1..(number_of_players + 1) {
+//         let empty_hand: Vec<Card> = Vec::new();
 
-        players.push(Player {
-            id: x as u8,
-            bet: generate_bet(x),
-            score: 0,
-            busted: false,
-            hand: empty_hand,
-        })
-    }
-    return players;
+//         players.push(Player {
+//             id: x as u8,
+//             bet: generate_bet(x),
+//             score: 0,
+//             busted: false,
+//             hand: empty_hand,
+//         })
+//     }
+//     return players;
+// }
+
+fn generate_player() -> Player {
+    let empty_hand: Vec<Card> = Vec::new();
+
+    let player = Player {
+        id: 1,
+        bet: generate_bet(1),
+        score: 0,
+        busted: false,
+        hand: empty_hand,
+    };
+    return player;
 }
 
 fn generate_bet(x: u16) -> u32 {
@@ -272,40 +361,119 @@ fn generate_bet(x: u16) -> u32 {
     return bet as u32;
 }
 
-fn deal(mut dealer: Dealer, players: Vec<Player>, mut cards: Vec<Card>) {
-    for mut player in players {
-        println!("===  Player {}  ===", player.id);
-        player.hand = deal_cards(&mut cards);
-        player.calc_score();
-        player.show_hand();
-        player.show_score();
-        player.check_busted();
-    }
+fn play_game(mut player: Player, mut dealer: Dealer, mut deck: Deck) {
+    println!("=======================================================");
+    println!("Let the game begin\n");
+    println!("The dealer is shuffling the cards...\n");
 
-    dealer.hand = deal_cards(&mut cards);
-    println!("Dealer is showing a {}", dealer.hand[0].name);
-    dealer.calc_score();
-    dealer.show_score();
-    dealer.check_busted();
+    // play first round function
+    // deals two cards to the dealer and each player
+    play_first_round(&mut player, &mut dealer, &mut deck);
+
+    // while the dealer isnt busted or there are still players
+    while !player.busted || !dealer.busted {
+        play_round(&mut player, &mut dealer, &mut deck);
+    }
 }
 
-fn deal_cards(cards: &mut Vec<Card>) -> Vec<Card> {
-    let mut deal_count = 0;
-    let mut hand: Vec<Card> = Vec::new();
+fn play_first_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
+    // deal each player and dealer two cards for the first round
+    dealer.add_card(deck.deal_card(), true);
+    dealer.add_card(deck.deal_card(), false);
 
-    while deal_count < 2 {
-        let rand_num = rand::thread_rng().gen_range(0..52);
+    // deal the player two cards
+    player.add_card(deck.deal_card(), true);
+    player.add_card(deck.deal_card(), false);
+}
 
-        if cards[rand_num].played == false {
-            hand.push(cards[rand_num].clone());
-            cards[rand_num].played = true;
-            deal_count += 1;
+fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
+    // if the player hasn't busted
+    if !player.busted {
+        // capturing the players move
+        let player_move = player_round_input(player);
+
+        // the player hits
+        if player_move.contains("H") {
+            println!("Player {} Hits!", player.id);
+            hit(player, deck);
+        }
+        // the player stands
+        else {
+            println!("Player {} Stands!", player.id);
+
+            // if the dealer's score is greater than the player's score
+            if dealer.score > player.score {
+                println!("Player {} has busted!", player.id);
+                player.busted = true;
+            }
         }
     }
 
-    return hand;
+    // if the dealer has lost
+    if dealer.busted {
+        println!("The Dealer is busted!");
+        process::exit(0);
+    }
+    // if the dealer can hit
+    else if !dealer.busted && dealer.score < 17 {
+        // dealer.action();
+
+        // generate number between 1 and 100
+        let num: u16 = rand::thread_rng().gen_range(1..101);
+
+        // if the dealer's score is less than 11 they will always hit
+        if dealer.score <= 10 {
+            dealer.add_card(deck.deal_card(), false);
+        }
+        // if the dealer's score is between 11 and 13 they have a 70% hit chance
+        else if dealer.score > 10 && dealer.score < 14 {
+            if num >= 30 {
+                dealer.add_card(deck.deal_card(), false);
+            }
+        }
+        // if the dealer's score is between 14 and 16 they have a 35% hit chance
+        else if dealer.score >= 14 && dealer.score < 17 {
+            if num >= 65 {
+                dealer.add_card(deck.deal_card(), false);
+            }
+        }
+    }
+
+    if dealer.won {
+        println!("The Dealer Wins");
+        println!("The Dealers Score was: {}", dealer.score);
+    }
 }
 
-fn hit() {}
+fn player_round_input(player: &mut Player) -> String {
+    loop {
+        println!(
+            "What will Player {}'s move be? (H) Hit, (S) Stand, (Q) Quit.",
+            player.id
+        );
 
-fn stand() {}
+        let mut p_m = String::new();
+
+        io::stdin()
+            .read_line(&mut p_m)
+            .expect("Failed to read line");
+
+        if p_m.to_uppercase().contains("Q") {
+            process::exit(0);
+        } else if p_m.to_uppercase().contains("H") || p_m.to_uppercase().contains("S") {
+            return p_m.to_uppercase();
+        }
+    }
+}
+
+fn hit(player: &mut Player, deck: &mut Deck) {
+    player.add_card(deck.deal_card(), false);
+}
+
+fn remove_player(players: &mut Vec<Player>, id: u8) -> Vec<Player> {
+    let players = players
+        .drain(..)
+        .filter(|p| p.id != id)
+        .collect::<Vec<Player>>();
+    return players;
+}
