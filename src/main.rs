@@ -4,8 +4,6 @@ use std::process;
 
 struct Dealer {
     score: u8,
-    busted: bool,
-    won: bool,
     hand: Vec<Card>,
 }
 
@@ -13,7 +11,6 @@ struct Dealer {
 struct Player {
     bet: u32,
     score: u8,
-    busted: bool,
     hand: Vec<Card>,
 }
 
@@ -58,8 +55,6 @@ impl Player {
         self.score = self.calc_score();
 
         if !first {
-            // println!("\n=== Player ===\n");
-
             self.show_hand();
             self.show_score();
             self.check_busted();
@@ -91,12 +86,7 @@ impl Player {
     }
 
     fn check_busted(&mut self) -> bool {
-        if self.score > 21 {
-            self.busted = true;
-            return true;
-        } else {
-            return false;
-        }
+        return self.score > 21;
     }
 
     fn show_score(&self) {
@@ -109,10 +99,6 @@ impl Dealer {
         self.hand.push(card);
 
         if !first_round {
-            if !show_first_hand {
-                // println!("\n=== Dealer ===\n");
-            }
-
             self.show_card();
             self.score = self.calc_score();
         } else {
@@ -121,21 +107,11 @@ impl Dealer {
             }
             self.score = self.calc_score();
         }
-
-        // println!("\n=== Dealer Debug ===\n");
-        // self.debug_show_score();
-        // self.debug_print_hand();
     }
 
     fn hit(&mut self, card: Card) {
         self.add_card(card, false, false);
     }
-
-    // fn debug_print_hand(&self) {
-    //     for card in &self.hand {
-    //         println!("{:?}", card);
-    //     }
-    // }
 
     fn show_first_hand(&self) {
         // shows the last card in the dealers hand
@@ -182,17 +158,8 @@ impl Dealer {
     }
 
     fn check_busted(&mut self) -> bool {
-        if self.score > 21 {
-            self.busted = true;
-            return true;
-        } else {
-            return false;
-        }
+        return self.score > 21;
     }
-
-    // fn debug_show_score(&self) {
-    //     println!("Dealer score: {}", self.score);
-    // }
 }
 
 // main function
@@ -220,8 +187,6 @@ fn generate_dealer() -> Dealer {
 
     let dealer = Dealer {
         score: 0,
-        busted: false,
-        won: false,
         hand: empty_hand,
     };
 
@@ -288,7 +253,6 @@ fn generate_player() -> Player {
     let player = Player {
         bet: generate_bet(),
         score: 0,
-        busted: false,
         hand: empty_hand,
     };
     return player;
@@ -410,13 +374,10 @@ fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
 
             // if the dealer's score is greater than the player's score
             if dealer.score > player.score && dealer.score < 22 {
-                player.busted = true;
-                dealer.won = true;
                 dealer_win(dealer, player);
             }
             // if the players score is greater than the dealers
             else if player.score > dealer.score && player.score < 22 {
-                dealer.busted = true;
                 player_win(dealer, player);
             }
             // both the dealer and player are tied and the dealer cannot hit
