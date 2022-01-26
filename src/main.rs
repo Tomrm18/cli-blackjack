@@ -23,7 +23,6 @@ struct Card {
     name: String,
     value: u8,
     played: bool,
-    held_by: u8,
 }
 
 struct Deck {
@@ -71,7 +70,7 @@ impl Player {
         self.score = self.calc_score();
 
         if !first {
-            println!("\n=== Player {} ===\n", self.id);
+            println!("\n=== Player ===\n");
 
             self.show_hand();
             self.show_score();
@@ -81,7 +80,7 @@ impl Player {
 
     fn show_hand(&self) {
         for card in &self.hand {
-            println!("Player {} is showing a {}", self.id, card.name);
+            println!("Player is showing a {}", card.name);
         }
     }
 
@@ -107,12 +106,11 @@ impl Player {
         if self.score > 21 {
             self.busted = true;
             self.bet = 0;
-            println!("Player {} is busted!", self.id);
         }
     }
 
     fn show_score(&self) {
-        println!("Player {} score: {}", self.id, self.score);
+        println!("Player score: {}", self.score);
     }
 }
 
@@ -123,7 +121,6 @@ impl Dealer {
         if !first {
             self.show_hand();
             self.score = self.calc_score();
-            self.check_busted();
 
             println!("\n=== Dealer Debug ===\n");
             self.debug_show_score();
@@ -174,10 +171,12 @@ impl Dealer {
         return score;
     }
 
-    fn check_busted(&mut self) {
+    fn check_busted(&mut self) -> bool {
         if self.score > 21 {
             self.busted = true;
-            println!("Dealer is busted!");
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -188,19 +187,8 @@ impl Dealer {
 
 // main function
 fn main() {
-    //
-
-    println!("Welcome to Command Line Blackjack! Implemented in Rust.");
-    println!("=======================================================");
-
-    // let num_of_players = generate_player_count();
-
-    // debug output
-    // println!("There will be {} players\n", num_of_players);
-
-    // creating the players, deck, and dealer objects
-
-    // let players = generate_players(num_of_players);
+    println!("\nWelcome to Command Line Blackjack! Implemented in Rust.");
+    println!("=======================================================\n");
 
     let player = generate_player();
 
@@ -211,28 +199,6 @@ fn main() {
     let dealer = generate_dealer();
 
     play_game(player, dealer, deck);
-}
-
-fn generate_player_count() -> u16 {
-    // declaring player numbers variable as a new string data type
-    let mut players_num = String::new();
-
-    let num_of_players = loop {
-        println!("How many players will there be?");
-
-        // capturing user input
-        io::stdin()
-            .read_line(&mut players_num)
-            .expect("Failed to read line");
-
-        // converting user inputted string into immutable number
-        let players_num: u16 = match players_num.trim().parse() {
-            Ok(num) => num,
-            Err(_) => continue,
-        };
-
-        return players_num;
-    };
 }
 
 fn generate_dealer() -> Dealer {
@@ -269,21 +235,18 @@ fn generate_cards() -> Vec<Card> {
                     name: String::from(&card_names[x + (13 * z)]),
                     value: 2 + x as u8,
                     played: PLAYED,
-                    held_by: 0,
                 });
             } else if x >= 8 && x < 12 {
                 cards.push(Card {
                     name: String::from(&card_names[x + (13 * z)]),
                     value: 10,
                     played: PLAYED,
-                    held_by: 0,
                 });
             } else {
                 cards.push(Card {
                     name: String::from(&card_names[x + (13 * z)]),
                     value: 11,
                     played: PLAYED,
-                    held_by: 0,
                 });
             }
         }
@@ -305,29 +268,12 @@ fn generate_card_names(card_types: [&str; 4], card_values: [&str; 13]) -> Vec<St
     return card_names;
 }
 
-// fn generate_players(number_of_players: u16) -> Vec<Player> {
-//     let mut players: Vec<Player> = Vec::new();
-
-//     for x in 1..(number_of_players + 1) {
-//         let empty_hand: Vec<Card> = Vec::new();
-
-//         players.push(Player {
-//             id: x as u8,
-//             bet: generate_bet(x),
-//             score: 0,
-//             busted: false,
-//             hand: empty_hand,
-//         })
-//     }
-//     return players;
-// }
-
 fn generate_player() -> Player {
     let empty_hand: Vec<Card> = Vec::new();
 
     let player = Player {
         id: 1,
-        bet: generate_bet(1),
+        bet: generate_bet(),
         score: 0,
         busted: false,
         hand: empty_hand,
@@ -335,14 +281,11 @@ fn generate_player() -> Player {
     return player;
 }
 
-fn generate_bet(x: u16) -> u32 {
+fn generate_bet() -> u32 {
     let mut bet_input = String::new();
 
     let bet = loop {
-        println!(
-            "How much will Player {} bet? (No need to include the '$')",
-            x
-        );
+        println!("How much will the Player bet? (Do not include the '$')");
 
         // capturing user input
         io::stdin()
@@ -371,7 +314,7 @@ fn play_game(mut player: Player, mut dealer: Dealer, mut deck: Deck) {
     play_first_round(&mut player, &mut dealer, &mut deck);
 
     // while the dealer isnt busted or there are still players
-    while !player.busted || !dealer.busted {
+    while !player.busted || !dealer.check_busted() {
         play_round(&mut player, &mut dealer, &mut deck);
     }
 }
@@ -388,13 +331,13 @@ fn play_first_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
 
 fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
     // if the player hasn't busted
-    if !player.busted {
+    if !player.busted && !dealer.check_busted() {
         // capturing the players move
-        let player_move = player_round_input(player);
+        let player_move = player_round_input();
 
         // the player hits
         if player_move.contains("H") {
-            println!("Player {} Hits!", player.id);
+            println!("Player Hits!");
             hit(player, deck);
         }
         // the player stands
@@ -403,21 +346,50 @@ fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
 
             // if the dealer's score is greater than the player's score
             if dealer.score > player.score {
-                println!("Player {} has busted!", player.id);
                 player.busted = true;
+                dealer.won = true;
+                dealer_win(dealer, player);
+            }
+            // both the dealer and player are tied at 21
+            else if dealer.score == 21 && dealer.score == player.score {
+                // ends game
+                tie();
             }
         }
-    }
 
-    // if the dealer has lost
-    if dealer.busted {
-        println!("The Dealer is busted!");
-        process::exit(0);
+        dealer_action(dealer, player, deck);
+    } else if player.busted {
+        dealer_win(dealer, player);
+    } else if dealer.check_busted() {
+        player_win(dealer, player);
     }
+}
+
+fn player_round_input() -> String {
+    loop {
+        println!("\nWhat will the Players move be? (H) Hit, (S) Stand, (Q) Quit.");
+
+        let mut p_m = String::new();
+
+        io::stdin()
+            .read_line(&mut p_m)
+            .expect("Failed to read line");
+
+        if p_m.to_uppercase().contains("Q") {
+            exit();
+        } else if p_m.to_uppercase().contains("H") || p_m.to_uppercase().contains("S") {
+            return p_m.to_uppercase();
+        }
+    }
+}
+
+fn hit(player: &mut Player, deck: &mut Deck) {
+    player.add_card(deck.deal_card(), false);
+}
+
+fn dealer_action(dealer: &mut Dealer, player: &mut Player, deck: &mut Deck) {
     // if the dealer can hit
-    else if !dealer.busted && dealer.score < 17 {
-        // dealer.action();
-
+    if dealer.score < 17 {
         // generate number between 1 and 100
         let num: u16 = rand::thread_rng().gen_range(1..101);
 
@@ -433,47 +405,42 @@ fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
         }
         // if the dealer's score is between 14 and 16 they have a 35% hit chance
         else if dealer.score >= 14 && dealer.score < 17 {
-            if num >= 65 {
+            // if the player's score is 17 or more the dealer will always hit
+            if player.score >= 17 {
+                dealer.add_card(deck.deal_card(), false);
+            } else if num >= 65 {
                 dealer.add_card(deck.deal_card(), false);
             }
         }
     }
-
-    if dealer.won {
-        println!("The Dealer Wins");
-        println!("The Dealers Score was: {}", dealer.score);
-    }
 }
 
-fn player_round_input(player: &mut Player) -> String {
-    loop {
-        println!(
-            "What will Player {}'s move be? (H) Hit, (S) Stand, (Q) Quit.",
-            player.id
-        );
+fn player_win(dealer: &mut Dealer, player: &mut Player) {
+    println!("\n===== GAME OVER =====\n");
 
-        let mut p_m = String::new();
+    println!("The Dealer is busted with a score of {}!", dealer.score);
+    println!("The Player wins with a score of {}!", player.score);
 
-        io::stdin()
-            .read_line(&mut p_m)
-            .expect("Failed to read line");
-
-        if p_m.to_uppercase().contains("Q") {
-            process::exit(0);
-        } else if p_m.to_uppercase().contains("H") || p_m.to_uppercase().contains("S") {
-            return p_m.to_uppercase();
-        }
-    }
+    exit();
 }
 
-fn hit(player: &mut Player, deck: &mut Deck) {
-    player.add_card(deck.deal_card(), false);
+fn dealer_win(dealer: &mut Dealer, player: &mut Player) {
+    println!("\n===== GAME OVER =====\n");
+
+    println!("The Player is busted with a score of {}!", player.score);
+    println!("The Dealer wins with a score of {}!", dealer.score);
+
+    exit();
 }
 
-fn remove_player(players: &mut Vec<Player>, id: u8) -> Vec<Player> {
-    let players = players
-        .drain(..)
-        .filter(|p| p.id != id)
-        .collect::<Vec<Player>>();
-    return players;
+fn tie() {
+    println!("\n===== GAME OVER =====\n");
+
+    println!("The Player and Dealer have both tied with a score of 21!");
+    exit();
+}
+
+fn exit() {
+    println!("\n===== EXITING GAME =====");
+    process::exit(0);
 }
