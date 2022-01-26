@@ -11,7 +11,6 @@ struct Dealer {
 
 #[derive(Debug)]
 struct Player {
-    id: u8,
     bet: u32,
     score: u8,
     busted: bool,
@@ -48,17 +47,6 @@ impl Deck {
                 return card;
             }
         }
-    }
-}
-
-// implementing display for Card struct so Card struct can be printed to the terminal
-impl std::fmt::Display for Card {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "(Card name: {}, Card Value: {}, Card played: {})",
-            self.name, self.value, self.played
-        )
     }
 }
 
@@ -143,11 +131,11 @@ impl Dealer {
         self.add_card(card, false, false);
     }
 
-    fn debug_print_hand(&self) {
-        for card in &self.hand {
-            println!("{}", card);
-        }
-    }
+    // fn debug_print_hand(&self) {
+    //     for card in &self.hand {
+    //         println!("{:?}", card);
+    //     }
+    // }
 
     fn show_first_hand(&self) {
         // shows the last card in the dealers hand
@@ -165,7 +153,7 @@ impl Dealer {
         let card = self.get_last_card();
         let shown_card = card.unwrap();
 
-        println!("The Dealer has put down a {}.\n", shown_card.name);
+        println!("\nThe Dealer has put down a {}.\n", shown_card.name);
     }
 
     fn get_last_card(&self) -> Option<&Card> {
@@ -202,9 +190,9 @@ impl Dealer {
         }
     }
 
-    fn debug_show_score(&self) {
-        println!("Dealer score: {}", self.score);
-    }
+    // fn debug_show_score(&self) {
+    //     println!("Dealer score: {}", self.score);
+    // }
 }
 
 // main function
@@ -212,6 +200,10 @@ fn main() {
     println!("\nWelcome to Command Line Blackjack! Implemented in Rust.");
     println!("=======================================================\n");
 
+    generate_objects();
+}
+
+fn generate_objects() {
     let player = generate_player();
 
     let deck = Deck {
@@ -294,7 +286,6 @@ fn generate_player() -> Player {
     let empty_hand: Vec<Card> = Vec::new();
 
     let player = Player {
-        id: 1,
         bet: generate_bet(),
         score: 0,
         busted: false,
@@ -339,12 +330,6 @@ fn play_game(mut player: Player, mut dealer: Dealer, mut deck: Deck) {
     while !player.check_busted() || !dealer.check_busted() {
         play_round(&mut player, &mut dealer, &mut deck);
     }
-
-    // if player.check_busted() {
-    //     dealer_win(dealer, player);
-    // } else if dealer.check_busted() {
-    //     player_win(dealer, player);
-    // }
 }
 
 fn play_first_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
@@ -383,7 +368,11 @@ fn blackjack_player(player: &mut Player) {
     );
     println!("The Player wins!");
 
-    exit();
+    if play_again_prompt() {
+        play_again();
+    } else {
+        exit();
+    }
 }
 
 fn blackjack_dealer(dealer: &mut Dealer) {
@@ -395,7 +384,11 @@ fn blackjack_dealer(dealer: &mut Dealer) {
     );
     println!("The Dealer wins!");
 
-    exit();
+    if play_again_prompt() {
+        play_again();
+    } else {
+        exit();
+    }
 }
 
 fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
@@ -477,7 +470,11 @@ fn player_win(dealer: &mut Dealer, player: &mut Player) {
     println!("The Dealer is busted with a score of {}!", dealer.score);
     println!("The Player wins with a score of {}!", player.score);
 
-    exit();
+    if play_again_prompt() {
+        play_again();
+    } else {
+        exit();
+    }
 }
 
 fn dealer_win(dealer: &mut Dealer, player: &mut Player) {
@@ -486,7 +483,11 @@ fn dealer_win(dealer: &mut Dealer, player: &mut Player) {
     println!("The Player is busted with a score of {}!", player.score);
     println!("The Dealer wins with a score of {}!", dealer.score);
 
-    exit();
+    if play_again_prompt() {
+        play_again();
+    } else {
+        exit();
+    }
 }
 
 fn tie(dealer: &mut Dealer) {
@@ -496,10 +497,34 @@ fn tie(dealer: &mut Dealer) {
         "The Player and Dealer have both tied with a score of {}!",
         dealer.score
     );
-    exit();
+
+    if play_again_prompt() {
+        play_again();
+    } else {
+        exit();
+    }
+}
+
+fn play_again_prompt() -> bool {
+    loop {
+        println!("\nWould you like to play again? (Y) Yes, (N) No");
+
+        let mut p_m = String::new();
+
+        io::stdin()
+            .read_line(&mut p_m)
+            .expect("Failed to read line");
+
+        return p_m.to_uppercase().contains("Y");
+    }
+}
+
+fn play_again() {
+    println!("\n");
+    generate_objects();
 }
 
 fn exit() {
-    println!("\n===== EXITING GAME =====");
+    println!("\n===== EXITING GAME =====\n");
     process::exit(0);
 }
