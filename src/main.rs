@@ -70,7 +70,7 @@ impl Player {
         self.score = self.calc_score();
 
         if !first {
-            println!("\n=== Player ===\n");
+            // println!("\n=== Player ===\n");
 
             self.show_hand();
             self.show_score();
@@ -102,10 +102,12 @@ impl Player {
         return score;
     }
 
-    fn check_busted(&mut self) {
+    fn check_busted(&mut self) -> bool {
         if self.score > 21 {
             self.busted = true;
-            self.bet = 0;
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -115,17 +117,30 @@ impl Player {
 }
 
 impl Dealer {
-    fn add_card(&mut self, card: Card, first: bool) {
+    fn add_card(&mut self, card: Card, first_round: bool, show_first_hand: bool) {
         self.hand.push(card);
 
-        if !first {
-            self.show_hand();
-            self.score = self.calc_score();
+        if !first_round {
+            if !show_first_hand {
+                // println!("\n=== Dealer ===\n");
+            }
 
-            println!("\n=== Dealer Debug ===\n");
-            self.debug_show_score();
-            self.debug_print_hand();
+            self.show_card();
+            self.score = self.calc_score();
+        } else {
+            if show_first_hand {
+                self.show_first_hand();
+            }
+            self.score = self.calc_score();
         }
+
+        // println!("\n=== Dealer Debug ===\n");
+        // self.debug_show_score();
+        // self.debug_print_hand();
+    }
+
+    fn hit(&mut self, card: Card) {
+        self.add_card(card, false, false);
     }
 
     fn debug_print_hand(&self) {
@@ -134,16 +149,23 @@ impl Dealer {
         }
     }
 
-    fn show_hand(&self) {
+    fn show_first_hand(&self) {
         // shows the last card in the dealers hand
-
         let card = self.get_last_card();
         let shown_card = card.unwrap();
 
         println!(
-            "The dealer is showing a {}, and another card faced down.",
+            "The Dealer is showing a {}, and another card faced down.\n",
             shown_card.name
         );
+    }
+
+    fn show_card(&self) {
+        // shows the last card in the dealers hand
+        let card = self.get_last_card();
+        let shown_card = card.unwrap();
+
+        println!("The Dealer has put down a {}.\n", shown_card.name);
     }
 
     fn get_last_card(&self) -> Option<&Card> {
@@ -307,58 +329,112 @@ fn generate_bet() -> u32 {
 fn play_game(mut player: Player, mut dealer: Dealer, mut deck: Deck) {
     println!("=======================================================");
     println!("Let the game begin\n");
-    println!("The dealer is shuffling the cards...\n");
+    println!("The Dealer is shuffling the cards...\n");
 
     // play first round function
     // deals two cards to the dealer and each player
     play_first_round(&mut player, &mut dealer, &mut deck);
 
-    // while the dealer isnt busted or there are still players
-    while !player.busted || !dealer.check_busted() {
+    // while the dealer or dealer arent busted
+    while !player.check_busted() || !dealer.check_busted() {
         play_round(&mut player, &mut dealer, &mut deck);
     }
+
+    // if player.check_busted() {
+    //     dealer_win(dealer, player);
+    // } else if dealer.check_busted() {
+    //     player_win(dealer, player);
+    // }
 }
 
 fn play_first_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
     // deal each player and dealer two cards for the first round
-    dealer.add_card(deck.deal_card(), true);
-    dealer.add_card(deck.deal_card(), false);
+    dealer.add_card(deck.deal_card(), true, false);
+    dealer.add_card(deck.deal_card(), true, true);
 
     // deal the player two cards
     player.add_card(deck.deal_card(), true);
     player.add_card(deck.deal_card(), false);
+
+    check_blackjack(player, dealer);
+}
+
+fn check_blackjack(player: &mut Player, dealer: &mut Dealer) {
+    if player.score == 21 && player.score != dealer.score {
+        blackjack_player(player);
+    }
+
+    if dealer.score == 21 && dealer.score != player.score {
+        blackjack_dealer(dealer);
+    }
+
+    // if the player and dealer both have blackjacks
+    if player.score == 21 && player.score == dealer.score {
+        tie(dealer);
+    }
+}
+
+fn blackjack_player(player: &mut Player) {
+    println!("\n===== GAME OVER =====\n");
+
+    println!(
+        "The Player has recored a Blackjack with a {} and {}, for a combined score of 21.",
+        player.hand[0].name, player.hand[1].name
+    );
+    println!("The Player wins!");
+
+    exit();
+}
+
+fn blackjack_dealer(dealer: &mut Dealer) {
+    println!("\n===== GAME OVER =====\n");
+
+    println!(
+        "The Dealer has recored a Blackjack with a {} and {}, for a combined score of 21.",
+        dealer.hand[0].name, dealer.hand[1].name
+    );
+    println!("The Dealer wins!");
+
+    exit();
 }
 
 fn play_round(player: &mut Player, dealer: &mut Dealer, deck: &mut Deck) {
-    // if the player hasn't busted
-    if !player.busted && !dealer.check_busted() {
+    // if the player hasn't busted or the dealer hasnt busted
+    if !player.check_busted() && !dealer.check_busted() {
         // capturing the players move
         let player_move = player_round_input();
 
         // the player hits
         if player_move.contains("H") {
-            println!("Player Hits!");
+            println!("Player Hits!\n");
             hit(player, deck);
         }
         // the player stands
         else {
-            println!("Player {} Stands!", player.id);
+            println!("Player Stands!\n");
+
+            dealer_action(dealer, deck);
 
             // if the dealer's score is greater than the player's score
-            if dealer.score > player.score {
+            if dealer.score > player.score && dealer.score < 22 {
                 player.busted = true;
                 dealer.won = true;
                 dealer_win(dealer, player);
             }
-            // both the dealer and player are tied at 21
-            else if dealer.score == 21 && dealer.score == player.score {
+            // if the players score is greater than the dealers
+            else if player.score > dealer.score && player.score < 22 {
+                dealer.busted = true;
+                player_win(dealer, player);
+            }
+            // both the dealer and player are tied and the dealer cannot hit
+            else if dealer.score >= 17 && dealer.score == player.score {
                 // ends game
-                tie();
+                tie(dealer);
             }
         }
 
-        dealer_action(dealer, player, deck);
-    } else if player.busted {
+        dealer_action(dealer, deck);
+    } else if player.check_busted() {
         dealer_win(dealer, player);
     } else if dealer.check_busted() {
         player_win(dealer, player);
@@ -387,31 +463,11 @@ fn hit(player: &mut Player, deck: &mut Deck) {
     player.add_card(deck.deal_card(), false);
 }
 
-fn dealer_action(dealer: &mut Dealer, player: &mut Player, deck: &mut Deck) {
-    // if the dealer can hit
+fn dealer_action(dealer: &mut Dealer, deck: &mut Deck) {
+    // if the dealer's score is less than 17
+    // they take a card
     if dealer.score < 17 {
-        // generate number between 1 and 100
-        let num: u16 = rand::thread_rng().gen_range(1..101);
-
-        // if the dealer's score is less than 11 they will always hit
-        if dealer.score <= 10 {
-            dealer.add_card(deck.deal_card(), false);
-        }
-        // if the dealer's score is between 11 and 13 they have a 70% hit chance
-        else if dealer.score > 10 && dealer.score < 14 {
-            if num >= 30 {
-                dealer.add_card(deck.deal_card(), false);
-            }
-        }
-        // if the dealer's score is between 14 and 16 they have a 35% hit chance
-        else if dealer.score >= 14 && dealer.score < 17 {
-            // if the player's score is 17 or more the dealer will always hit
-            if player.score >= 17 {
-                dealer.add_card(deck.deal_card(), false);
-            } else if num >= 65 {
-                dealer.add_card(deck.deal_card(), false);
-            }
-        }
+        dealer.hit(deck.deal_card());
     }
 }
 
@@ -433,10 +489,13 @@ fn dealer_win(dealer: &mut Dealer, player: &mut Player) {
     exit();
 }
 
-fn tie() {
+fn tie(dealer: &mut Dealer) {
     println!("\n===== GAME OVER =====\n");
 
-    println!("The Player and Dealer have both tied with a score of 21!");
+    println!(
+        "The Player and Dealer have both tied with a score of {}!",
+        dealer.score
+    );
     exit();
 }
 
